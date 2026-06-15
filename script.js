@@ -89,40 +89,12 @@ async function sendToFormspree(formData) {
     headers: { Accept: 'application/json' },
   });
 
-  if (!response.ok) {
-    throw new Error('Formspree submission failed.');
-  }
-}
-
-releasedRadios.forEach((radio) => {
-  radio.addEventListener('change', updateConditionalFields);
-});
-
-spotifyInput.addEventListener('input', validateSpotifyProfile);
-updateConditionalFields();
-
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  updateConditionalFields();
-
-  if (!validateSpotifyProfile() || !form.reportValidity()) {
+  if (response.ok) {
     return;
   }
 
-  const submissionDate = new Date().toISOString();
-  submissionDateInput.value = submissionDate;
-  const formData = new FormData(form);
-  const submission = buildSubmission(submissionDate);
-
-  formStatus.textContent = 'Submitting...';
-  submitButton.disabled = true;
+  let message = 'Formspree submission failed.';
 
   try {
-    await sendToFormspree(formData);
-    saveLocalSubmission(submission);
-    window.location.href = './thanks.html';
-  } catch (error) {
-    formStatus.textContent = 'Submission failed. Please try again.';
-    submitButton.disabled = false;
-  }
-});
+    const data = await response.json();
+    const errors = data.errors?.map((error) => error.message).filter(Boolean);

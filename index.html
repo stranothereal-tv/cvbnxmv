@@ -22,7 +22,7 @@
         <p class="subtitle">Submit your artist details, social links, distribution history, and one song for review.</p>
       </div>
 
-      <form id="waitlist-form" class="waitlist-form" action="./thanks.html" method="get">
+      <form id="waitlist-form" class="waitlist-form" action="https://formspree.io/f/maqzvavq" method="post" enctype="multipart/form-data">
         <div class="field-grid">
           <label>
             <span>Full name</span>
@@ -93,6 +93,9 @@
           </label>
         </div>
 
+        <input type="hidden" name="_subject" value="New Solvaro waitlist submission" />
+        <input id="submission-date" type="hidden" name="submissionDate" />
+        <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
         <button type="submit">Submit to waitlist</button>
       </form>
     </section>

@@ -1,9 +1,14 @@
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/maqzvavq';
+
 const form = document.querySelector('#waitlist-form');
 const releasedRadios = document.querySelectorAll('input[name="released"]');
 const spotifySection = document.querySelector('#spotify-section');
 const songSection = document.querySelector('#song-section');
 const spotifyInput = document.querySelector('#spotify-profile');
 const songInput = document.querySelector('#song-file');
+const submissionDateInput = document.querySelector('#submission-date');
+const formStatus = document.querySelector('#form-status');
+const submitButton = form.querySelector('button[type="submit"]');
 
 const spotifyArtistUrlPattern = /^https:\/\/open\.spotify\.com\/artist\/[A-Za-z0-9]+(?:[/?#].*)?$/;
 
@@ -28,7 +33,9 @@ function updateConditionalFields() {
   setSectionState(songSection, isUnreleased);
 
   spotifyInput.required = isReleased;
+  spotifyInput.disabled = !isReleased;
   songInput.required = isUnreleased;
+  songInput.disabled = !isUnreleased;
 
   if (!isReleased) {
     spotifyInput.value = '';
@@ -51,7 +58,7 @@ function validateSpotifyProfile() {
   return false;
 }
 
-function buildSubmission() {
+function buildSubmission(submissionDate) {
   const formData = new FormData(form);
   const songFile = songInput.files[0];
 
@@ -64,10 +71,27 @@ function buildSubmission() {
     youtubeChannel: formData.get('youtube'),
     releasedMusic: formData.get('released'),
     spotifyArtistProfile: formData.get('released') === 'yes' ? formData.get('spotifyArtistProfile') : '',
-    songFileUrl: formData.get('released') === 'no' && songFile ? URL.createObjectURL(songFile) : '',
     songFileName: formData.get('released') === 'no' && songFile ? songFile.name : '',
-    submissionDate: new Date().toISOString(),
+    submissionDate,
   };
+}
+
+function saveLocalSubmission(submission) {
+  const submissions = JSON.parse(localStorage.getItem('solvaroWaitlistSubmissions') || '[]');
+  submissions.push(submission);
+  localStorage.setItem('solvaroWaitlistSubmissions', JSON.stringify(submissions));
+}
+
+async function sendToFormspree(formData) {
+  const response = await fetch(FORMSPREE_ENDPOINT, {
+    method: 'POST',
+    body: formData,
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error('Formspree submission failed.');
+  }
 }
 
 releasedRadios.forEach((radio) => {
@@ -77,7 +101,7 @@ releasedRadios.forEach((radio) => {
 spotifyInput.addEventListener('input', validateSpotifyProfile);
 updateConditionalFields();
 
-form.addEventListener('submit', (event) => {
+form.addEventListener('submit', async (event) => {
   event.preventDefault();
   updateConditionalFields();
 
@@ -85,9 +109,20 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  const submissions = JSON.parse(localStorage.getItem('solvaroWaitlistSubmissions') || '[]');
-  submissions.push(buildSubmission());
-  localStorage.setItem('solvaroWaitlistSubmissions', JSON.stringify(submissions));
+  const submissionDate = new Date().toISOString();
+  submissionDateInput.value = submissionDate;
+  const formData = new FormData(form);
+  const submission = buildSubmission(submissionDate);
 
-  window.location.href = './thanks.html';
+  formStatus.textContent = 'Submitting...';
+  submitButton.disabled = true;
+
+  try {
+    await sendToFormspree(formData);
+    saveLocalSubmission(submission);
+    window.location.href = './thanks.html';
+  } catch (error) {
+    formStatus.textContent = 'Submission failed. Please try again.';
+    submitButton.disabled = false;
+  }
 });
